@@ -10,7 +10,7 @@ from email.header import Header
 from datetime import datetime
 
 
-from global_config import mail_pass, mail_user, sender, receivers, sender_name, smtp_server
+from global_config import sender_pass, sender, receivers, sender_name, smtp_server
 from global_config import PLEX_ANIME_PATH, BGMI_BANGUMI_PATH, calender_url
 
 log_pattern = re.compile(r"(.*)Skipped(.*)already exists(.*)")
@@ -165,7 +165,7 @@ if email_content != "":
     message['Subject'] = Header(subject, 'utf-8')
 
     smtpObj = smtplib.SMTP_SSL(f"{smtp_server}:465")
-    smtpObj.login(mail_user, mail_pass)
+    smtpObj.login(sender, sender_pass)
     smtpObj.sendmail(sender, receivers, message.as_string())
 
 # sleep(10)
@@ -202,6 +202,6 @@ if scan_rename_log != "":
     message['Subject'] = Header(subject, 'utf-8')
 
     smtpObj = smtplib.SMTP_SSL(f"{smtp_server}:465")
-    smtpObj.login(mail_user, mail_pass)
+    smtpObj.login(sender, sender_pass)
     smtpObj.sendmail(sender, receivers, message.as_string())
     exit()

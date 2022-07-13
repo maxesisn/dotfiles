@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 from email.header import Header
 from datetime import datetime
 
-from global_config import mail_pass, mail_user, sender, receivers, sender_name, smtp_server
+from global_config import sender_pass, sender, receivers, sender_name, smtp_server
 from global_config import zpool_name
 
 disk_pattern = re.compile(r"^(?!wwn)(?!nvme-eui).*")
@@ -42,5 +42,5 @@ subject = f"S.M.A.R.T每周检查报告 {datetime.now().strftime('%m/%d/%Y, %H:%
 message['Subject'] = Header(subject, 'utf-8')
 
 smtpObj = smtplib.SMTP_SSL(f"{smtp_server}:465")
-smtpObj.login(mail_user, mail_pass)
+smtpObj.login(sender, sender_pass)
 smtpObj.sendmail(sender, receivers, message.as_string())

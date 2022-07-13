@@ -4,7 +4,7 @@ from email.mime.text import MIMEText
 from email.header import Header
 from datetime import datetime
 
-from global_config import mail_pass, mail_user, sender, receivers, sender_name, smtp_server
+from global_config import sender_pass, sender, receivers, sender_name, smtp_server
 from global_config import zpool_name 
 
 zpool_log = os.popen(f"/usr/sbin/zpool status {zpool_name}").read()
@@ -19,5 +19,5 @@ subject = f"{zpool_name} 存储池状态告警 {datetime.now().strftime('%m/%d/%
 message['Subject'] = Header(subject, 'utf-8')
 
 smtpObj = smtplib.SMTP_SSL(f"{smtp_server}:465")
-smtpObj.login(mail_user, mail_pass)
+smtpObj.login(sender, sender_pass)
 smtpObj.sendmail(sender, receivers, message.as_string())
