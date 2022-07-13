@@ -1,0 +1,5 @@
+__pycache__
+crontab.file
+global_config.py
+softlinks.sh
+temp/
