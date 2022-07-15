@@ -2,14 +2,10 @@ import os
 import logging
 import re
 import requests
-import smtplib
-from email.mime.text import MIMEText
-from email.header import Header
 from datetime import datetime
 
-
-from global_config import sender_pass, sender, receivers, sender_name, smtp_server
 from global_config import MEDIALIB_FOLDER_PATH, BGMI_FOLDER_PATH, BGMI_API_URL
+from sendmail import send_mail
 
 log_pattern = re.compile(r"(.*)Skipped(.*)already exists(.*)")
 NEED_RENAME_CONFIG = MEDIALIB_FOLDER_PATH+"NEED_RENAME.txt"
@@ -146,16 +142,9 @@ for bangumi in bangumi_in_rename_config_list:
     email_content += "\n\n"
 
 if email_content != "":
-    message = MIMEText(email_content.encode('utf-8'), 'plain', 'utf-8')
-    message['From'] = str(Header(f"{sender_name} <{sender}>"))
-    message['To'] = ", ".join(receivers)
-
     subject = f"新番复制重命名工作 {datetime.now().strftime('%m/%d/%Y, %H:%M')}"
-    message['Subject'] = Header(subject, 'utf-8')
+    send_mail(subject, email_content)
 
-    smtpObj = smtplib.SMTP_SSL(f"{smtp_server}:465")
-    smtpObj.login(sender, sender_pass)
-    smtpObj.sendmail(sender, receivers, message.as_string())
 
 
 logging.info("开始二次扫描")
@@ -183,14 +172,7 @@ for bangumi_name in bangumi_in_rename_config_list:
     except FileNotFoundError:
         logging.warning("Bangumi not exist, skipped")
 if scan_rename_log != "":
-    message = MIMEText(scan_rename_log.encode('utf-8'), 'plain', 'utf-8')
-    message['From'] = str(Header(f"{sender_name} <{sender}>"))
-    message['To'] = ", ".join(receivers)
-
     subject = f"新番补充重命名工作 {datetime.now().strftime('%m/%d/%Y, %H:%M')}"
-    message['Subject'] = Header(subject, 'utf-8')
+    send_mail(subject, scan_rename_log)
 
-    smtpObj = smtplib.SMTP_SSL(f"{smtp_server}:465")
-    smtpObj.login(sender, sender_pass)
-    smtpObj.sendmail(sender, receivers, message.as_string())
-    exit()
+exit()

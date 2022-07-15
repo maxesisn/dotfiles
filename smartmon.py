@@ -1,14 +1,9 @@
-from dis import dis
-from distutils.log import info
 import os
 import re
-import smtplib
-from email.mime.text import MIMEText
-from email.header import Header
 from datetime import datetime
 
-from global_config import sender_pass, sender, receivers, sender_name, smtp_server
 from global_config import zpool_name
+from sendmail import send_mail
 
 disk_pattern = re.compile(r"^(?!wwn)(?!nvme-eui).*")
 disk_list = os.listdir("/dev/disk/by-id")
@@ -34,13 +29,6 @@ zpool_log = os.popen(f"/usr/sbin/zpool status {zpool_name}").read()
 
 new_infomsg += "\n\n" + zpool_log
 
-message = MIMEText(new_infomsg.encode('utf-8'), 'plain', 'utf-8')
-message['From'] = str(Header(f"{sender_name} <{sender}>"))
-message['To'] = ", ".join(receivers)
-
 subject = f"S.M.A.R.T每周检查报告 {datetime.now().strftime('%m/%d/%Y, %H:%M')}"
-message['Subject'] = Header(subject, 'utf-8')
 
-smtpObj = smtplib.SMTP_SSL(f"{smtp_server}:465")
-smtpObj.login(sender, sender_pass)
-smtpObj.sendmail(sender, receivers, message.as_string())
+send_mail(subject, new_infomsg)
