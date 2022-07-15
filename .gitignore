@@ -3,3 +3,4 @@ crontab.file
 global_config.py
 softlinks.sh
 temp/
+data/

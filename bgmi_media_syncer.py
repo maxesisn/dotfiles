@@ -2,7 +2,6 @@ import os
 import shutil
 import logging
 import re
-from ics import Calendar
 import requests
 import smtplib
 from email.mime.text import MIMEText
@@ -11,139 +10,130 @@ from datetime import datetime
 
 
 from global_config import sender_pass, sender, receivers, sender_name, smtp_server
-from global_config import PLEX_ANIME_PATH, BGMI_BANGUMI_PATH, calender_url
+from global_config import MEDIALIB_FOLDER_PATH, BGMI_FOLDER_PATH, BGMI_API_URL
 
 log_pattern = re.compile(r"(.*)Skipped(.*)already exists(.*)")
-NEED_RENAME_CONFIG = PLEX_ANIME_PATH+"NEED_RENAME.txt"
+NEED_RENAME_CONFIG = MEDIALIB_FOLDER_PATH+"NEED_RENAME.txt"
 
+bgmi_index_data = requests.get(BGMI_API_URL).json()
+bgmi_bangumi_list = list()
+for data in bgmi_index_data["data"]:
+    bangumi_data = dict()
+    bangumi_data["bangumi_name"]: str = data["bangumi_name"]
+    bangumi_data["total_episodes"]: int = data["episode"]
+    if bangumi_data["total_episodes"] == 0:
+        continue
+    bangumi_data["episode_list"]: list = data["player"]
+    bgmi_bangumi_list.append(bangumi_data)
 
-c = Calendar(requests.get(calender_url).text)
-act_recorded_bangumi = list()
-for recorded_bangumi in c:
-    if recorded_bangumi.startswith("SUMMARY:"):
-        act_recorded_bangumi.append(
-            str(recorded_bangumi).strip().removeprefix("SUMMARY:").replace(":", ""))
+bgmi_bangumi_name_list = [x["bangumi_name"] for x in bgmi_bangumi_list]
 
 logging.basicConfig(level=logging.DEBUG)
 email_content = ""
 
-new_bangumi_list = list()
+bangumi_in_rename_config_list = list()
 
 with open(NEED_RENAME_CONFIG) as f:
     while True:
         temp_dict = dict()
         temp_dict["folder_name"] = f.readline().rstrip("\n")
-        if temp_dict["folder_name"].startswith("+"):
-            temp_dict["start_ep"] = temp_dict["folder_name"][1:3]
-            temp_dict["folder_name"] = temp_dict["folder_name"][3:]
-        else:
-            temp_dict["start_ep"] = "0"
         temp_dict["raw_name"] = f.readline().rstrip("\n")
         if not (temp_dict["folder_name"] or temp_dict["raw_name"]):
             break
-        new_bangumi_list.append(temp_dict)
+        bangumi_in_rename_config_list.append(temp_dict)
 
-print(new_bangumi_list)
 bangumi_missing_str = "警告：\n"
 
 bangumi_foldername_list = [bangumi["folder_name"]
-                           for bangumi in new_bangumi_list]
-bangumi_only_in_record_list = [
-    bgm for bgm in bangumi_foldername_list if bgm not in act_recorded_bangumi]
-bangumi_only_in_bgmi_list = [
-    bgm for bgm in act_recorded_bangumi if bgm not in bangumi_foldername_list]
+                           for bangumi in bangumi_in_rename_config_list]
+bangumi_only_in_rename_config_list = [
+    bgm for bgm in bangumi_foldername_list if bgm not in bgmi_bangumi_name_list]
+bangumi_only_in_bgmi_web_list = [
+    bgm for bgm in bgmi_bangumi_name_list if bgm not in bangumi_foldername_list]
 
-if bangumi_only_in_record_list:
+if bangumi_only_in_rename_config_list:
     bangumi_missing_str += "以下番剧仅在NEED_RENAME.txt中记录："
-    bangumi_missing_str += " ".join(bangumi_only_in_record_list)
+    bangumi_missing_str += " ".join(bangumi_only_in_rename_config_list)
     bangumi_missing_str += "\n"
-if bangumi_only_in_bgmi_list:
+if bangumi_only_in_bgmi_web_list:
     bangumi_missing_str += "以下番剧在BGmi中有记录，但未存在于NEED_RENAME.txt："
-    bangumi_missing_str += " ".join(bangumi_only_in_bgmi_list)
+    bangumi_missing_str += " ".join(bangumi_only_in_bgmi_web_list)
     bangumi_missing_str += "\n"
-if not (bangumi_only_in_record_list or bangumi_only_in_bgmi_list):
+if not (bangumi_only_in_rename_config_list or bangumi_only_in_bgmi_web_list):
     bangumi_missing_str = str()
 
-print(bangumi_missing_str)
-
-for bangumi_name in new_bangumi_list:
-    folder_name = bangumi_name["folder_name"]
-    raw_name = bangumi_name["raw_name"]
+for bangumi in bangumi_in_rename_config_list:
+    bangumi_in_bgmi: list[dict] = bgmi_bangumi_list[bgmi_bangumi_name_list.index(
+        bangumi["folder_name"])]
+    folder_name = bangumi["folder_name"]
+    raw_name = bangumi["raw_name"]
+    start_episode = int(sorted(bangumi_in_bgmi["episode_list"])[0])
     logging.info("Processing "+folder_name)
-    if folder_name not in os.listdir(BGMI_BANGUMI_PATH):
+    if folder_name not in os.listdir(BGMI_FOLDER_PATH):
         logging.info("Bangumi not exist, skipped")
         continue
-    if folder_name not in os.listdir(PLEX_ANIME_PATH):
-        os.mkdir(os.path.join(PLEX_ANIME_PATH, folder_name))
-    bangumi_in_plex = os.listdir(PLEX_ANIME_PATH+folder_name)
+    if folder_name not in os.listdir(MEDIALIB_FOLDER_PATH):
+        os.mkdir(MEDIALIB_FOLDER_PATH+folder_name)
+    bangumi_in_medialib = os.listdir(MEDIALIB_FOLDER_PATH+folder_name)
     p = re.compile(r"(.*) - S([0-9][0-9])E([0-9][0-9]) - (.*)")
-    bangumi_in_plex_digit = list()
-    start_ep = int(bangumi_name["start_ep"])
-    for bgm in bangumi_in_plex:
+    bangumi_in_medialib_existed_episodes = list()
+    for bgm in bangumi_in_medialib:
         ep_g = p.search(bgm)
         if ep_g is None:
             continue
         ep = ep_g.group(3)
         ses = ep_g.group(2)
         ep = int(ep)
+        bangumi_in_medialib_existed_episodes.append(ep+start_episode-1)
 
-        bangumi_in_plex_digit.append(str(ep+start_ep))
-    bangumi_in_bgmi = os.listdir(BGMI_BANGUMI_PATH+folder_name)
-    bangumi_all_available = bangumi_in_plex_digit + bangumi_in_bgmi
-    bangumi_all_available = set(bangumi_all_available)
-    new_episodes = bangumi_all_available.difference(bangumi_in_plex_digit)
+    bangumi_in_bgmi_folder_episodes = os.listdir(BGMI_FOLDER_PATH+folder_name)
+    bangumi_in_bgmi_folder_episodes = [int(ep) for ep in bangumi_in_bgmi_folder_episodes]
+    bangumi_all_available_episodes = bangumi_in_medialib_existed_episodes + \
+        bangumi_in_bgmi_folder_episodes
+    bangumi_all_available_episodes = set(bangumi_all_available_episodes)
+    new_episodes_in_bgmi_folder = bangumi_all_available_episodes.difference(
+        bangumi_in_medialib_existed_episodes)
 
-    if not new_episodes:
-        logging.info("Already newest")
+    if not new_episodes_in_bgmi_folder:
+        logging.info("No new episodes, skipped")
         continue
-    new_episodes = list(new_episodes)
-    new_episodes.sort()
+    new_episodes_in_bgmi_folder = sorted(list(new_episodes_in_bgmi_folder))
 
-    non_finished_eps = list()
-    for episode in new_episodes:
-        if not os.listdir(os.path.join(BGMI_BANGUMI_PATH, folder_name, str(episode))):
-            non_finished_eps.append(episode)
+    episodes_still_in_downloading_status = list()
+    for ep in new_episodes_in_bgmi_folder:
+        if not os.listdir(os.path.join(BGMI_FOLDER_PATH, folder_name, str(ep))):
+            episodes_still_in_downloading_status.append(ep)
         else:
-            for files in os.listdir(os.path.join(BGMI_BANGUMI_PATH, folder_name, str(episode))):
+            for files in os.listdir(os.path.join(BGMI_FOLDER_PATH, folder_name, str(ep))):
                 if files.endswith(".!qB"):
-                    non_finished_eps.append(episode)
-    for ep in non_finished_eps:
-        new_episodes.remove(ep)
-    if not new_episodes:
-        logging.info("Already newest")
+                    episodes_still_in_downloading_status.append(ep)
+
+    for ep in episodes_still_in_downloading_status:
+        new_episodes_in_bgmi_folder.remove(ep)
+
+    if not new_episodes_in_bgmi_folder:
+        logging.info("No new episodes, skipped")
         continue
+    
+    input()
 
     if email_content == "":
         email_content += bangumi_missing_str
         email_content += "已对下列新番完成处理:\n"
     email_content += folder_name+": "
     episode_name_list = list()
-    for episode in new_episodes:
+    for episode in new_episodes_in_bgmi_folder:
         episode = str(episode)
         logging.info("Processing episode "+episode)
         episode_name_list.append(f"第{episode}集")
-        episode_path = os.path.join(folder_name, episode)
-        print(os.path.join(BGMI_BANGUMI_PATH, episode_path),
-              os.path.join(PLEX_ANIME_PATH, folder_name))
+        episode_ready_for_copy_path: str = bangumi_in_bgmi["episode_list"][episode]["path"]
+        episode_ready_for_copy_path = BGMI_FOLDER_PATH + episode_ready_for_copy_path
         # for linux running rsync
         os.system(
-            f"rsync -a --info=progress2 '{os.path.join(BGMI_BANGUMI_PATH, episode_path)}' '{os.path.join(PLEX_ANIME_PATH, folder_name)}'")
+            f"rsync -a --info=progress2 '{episode_ready_for_copy_path}' '{os.path.join(MEDIALIB_FOLDER_PATH, folder_name)}'")
     episode_name = " ".join(episode_name_list)
     email_content += episode_name
-    os.chdir(os.path.join(PLEX_ANIME_PATH, folder_name))
-    dirlist = os.listdir()
-    for dir in dirlist:
-        if os.path.isdir(dir):
-            filelist = os.listdir(dir)
-        else:
-            continue
-        for file in filelist:
-            try:
-                shutil.move(os.path.join("./", dir, file), os.path.join("./"))
-            except shutil.Error:
-                pass
-        if dir.isdigit():
-            shutil.rmtree(dir)
+
     rename_log = os.popen(f"/usr/local/bin/anirename '{raw_name}'").read()
     rename_log = rename_log.splitlines()
     new_rename_log = list()
@@ -157,7 +147,7 @@ for bangumi_name in new_bangumi_list:
     email_content += "\n\n"
 
 if email_content != "":
-    message = MIMEText(email_content, 'plain', 'utf-8')
+    message = MIMEText(email_content.encode('utf-8'), 'plain', 'utf-8')
     message['From'] = str(Header(f"{sender_name} <{sender}>"))
     message['To'] = ", ".join(receivers)
 
@@ -168,15 +158,15 @@ if email_content != "":
     smtpObj.login(sender, sender_pass)
     smtpObj.sendmail(sender, receivers, message.as_string())
 
-# sleep(10)
+
 logging.info("开始二次扫描")
 scan_rename_log = ""
-for bangumi_name in new_bangumi_list:
+for bangumi_name in bangumi_in_rename_config_list:
     folder_name = bangumi_name["folder_name"]
     raw_name = bangumi_name["raw_name"]
     try:
         logging.info(f"Processing {folder_name}")
-        os.chdir(os.path.join(PLEX_ANIME_PATH, folder_name))
+        os.chdir(os.path.join(MEDIALIB_FOLDER_PATH, folder_name))
         rename_log = os.popen(f"/usr/local/bin/anirename '{raw_name}'").read()
         rename_log = rename_log.splitlines()
         new_rename_log = list()
@@ -194,7 +184,7 @@ for bangumi_name in new_bangumi_list:
     except FileNotFoundError:
         logging.warning("Bangumi not exist, skipped")
 if scan_rename_log != "":
-    message = MIMEText(scan_rename_log, 'plain', 'utf-8')
+    message = MIMEText(scan_rename_log.encode('utf-8'), 'plain', 'utf-8')
     message['From'] = str(Header(f"{sender_name} <{sender}>"))
     message['To'] = ", ".join(receivers)
 

@@ -34,7 +34,7 @@ zpool_log = os.popen(f"/usr/sbin/zpool status {zpool_name}").read()
 
 new_infomsg += "\n\n" + zpool_log
 
-message = MIMEText(new_infomsg, 'plain', 'utf-8')
+message = MIMEText(new_infomsg.encode('utf-8'), 'plain', 'utf-8')
 message['From'] = str(Header(f"{sender_name} <{sender}>"))
 message['To'] = ", ".join(receivers)
 
