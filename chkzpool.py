@@ -11,7 +11,7 @@ zpool_log = os.popen(f"/usr/sbin/zpool status {zpool_name}").read()
 if "state: ONLINE" in zpool_log and "errors: No known data errors" in zpool_log:
     exit()
 
-message = MIMEText(zpool_log, 'plain', 'utf-8')
+message = MIMEText(zpool_log.encode('utf-8'), 'plain', 'utf-8')
 message['From'] = str(Header(f"{sender_name} <{sender}>"))
 message['To'] = ", ".join(receivers)
 

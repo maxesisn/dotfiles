@@ -9,8 +9,8 @@ receivers = ["xx@xx.xx"]
 # SMTP服务器地址
 smtp_server = "smtp.xxx.com"
 
-calender_url = "http://1.1.1.1:8088/resource/calendar.ics"
-PLEX_ANIME_PATH = "/path/with/slash/suffix/"
-BGMI_BANGUMI_PATH = "/path/with/slash/suffix/"
+BGMI_API_URL = "http://x.x.x.x:8088/api/index"
+MEDIALIB_FOLDER_PATH = "/path/with/slash/suffix/"
+BGMI_FOLDER_PATH = "/path/with/slash/suffix/"
 
 zpool_name = "xxx"

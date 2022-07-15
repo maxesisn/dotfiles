@@ -8,9 +8,9 @@
 
 * 前置需求：
     1. 完善global_config相关配置:
-        * `calender_url`: BGmi的日历配置文件url
-        * `PLEX_ANIME_PATH`: 媒体库文件夹路径（可以不是Plex）
-        * `BGMI_BANGUMI_PATH`: BGmi下载目录
+        * `BGMI_API_URL`: BGmi的接口地址，修改IP与端口即可
+        * `MEDIALIB_FOLDER_PATH`: 冻鳗媒体库关联的文件夹路径
+        * `BGMI_FOLDER_PATH`: BGmi下载目录
     2. 需要拥有正常运行的[BGmi](https://github.com/BGmi/bgmi-docker-all-in-one)实例
     3. 需要安装[filebot](https://www.filebot.net/)并购买授权
     4. 需要将`anirename`脚本拷贝或链接至 `/usr/local/bin/`
