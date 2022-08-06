@@ -1,7 +1,6 @@
 import os
 from datetime import datetime
 
-from global_config import sender_pass, sender, receivers, sender_name, smtp_server
 from global_config import zpool_name 
 from sendmail import send_mail
 

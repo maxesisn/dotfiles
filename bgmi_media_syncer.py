@@ -105,12 +105,12 @@ for bangumi in bangumi_in_rename_config_list:
 
     for ep in episodes_still_in_downloading_status:
         new_episodes_in_bgmi_folder.remove(ep)
+        logging.info("Episode "+str(ep)+" still in downloading status, skipped")
 
     if not new_episodes_in_bgmi_folder:
         logging.info("No new episodes, skipped")
         continue
-    
-    input()
+
 
     if email_content == "":
         email_content += bangumi_missing_str
@@ -119,16 +119,17 @@ for bangumi in bangumi_in_rename_config_list:
     episode_name_list = list()
     for episode in new_episodes_in_bgmi_folder:
         episode = str(episode)
-        logging.info("Processing episode "+episode)
+        logging.info("ℹ Processing episode "+episode)
         episode_name_list.append(f"第{episode}集")
         episode_ready_for_copy_path: str = bangumi_in_bgmi["episode_list"][episode]["path"]
         episode_ready_for_copy_path = BGMI_FOLDER_PATH + episode_ready_for_copy_path
         # for linux running rsync
         os.system(
-            f"rsync -a --info=progress2 '{episode_ready_for_copy_path}' '{os.path.join(MEDIALIB_FOLDER_PATH, folder_name)}'")
+            f"rsync -a '{episode_ready_for_copy_path}' '{os.path.join(MEDIALIB_FOLDER_PATH, folder_name)}'")
     episode_name = " ".join(episode_name_list)
     email_content += episode_name
 
+    os.chdir(os.path.join(MEDIALIB_FOLDER_PATH, folder_name))
     rename_log = os.popen(f"/usr/local/bin/anirename '{raw_name}'").read()
     rename_log = rename_log.splitlines()
     new_rename_log = list()

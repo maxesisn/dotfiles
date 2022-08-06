@@ -13,7 +13,7 @@ indep_disk_list = [disk for disk in disk_list if disk_pattern.match(
 
 smart_info = str()
 new_infomsg = list()
-keyword_list = ["Model", "Serial", "Firmware", "result:", "Reallocated", "Spin_Retry",
+keyword_list = ["ATTRIBUTE_NAME", "Model", "Serial", "Firmware", "result:", "Reallocated", "Spin_Retry",
                 "Current_Pending_Sector", "Offline_Uncorrectable", "Extended offline", "Percentage Used", "Power On Hours", "Power_On_Hours", "Integrity Errors"]
 for disk in indep_disk_list:
     infomsg = os.popen("/usr/sbin/smartctl -a /dev/disk/by-id/"+disk).read()
@@ -24,6 +24,10 @@ for disk in indep_disk_list:
     new_infomsg.append("\n")
 
 new_infomsg = "\n".join(new_infomsg)
+
+zpool_list = os.popen(f"/usr/sbin/zpool list").read()
+
+new_infomsg += "\n\n" + zpool_list
 
 zpool_log = os.popen(f"/usr/sbin/zpool status {zpool_name}").read()
 
