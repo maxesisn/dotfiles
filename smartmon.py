@@ -13,7 +13,7 @@ indep_disk_list = [disk for disk in disk_list if disk_pattern.match(
 
 smart_info = str()
 new_infomsg = list()
-keyword_list = ["ATTRIBUTE_NAME", "Model", "Serial", "Firmware", "result:", "Reallocated", "Spin_Retry",
+keyword_list = ["ATTRIBUTE_NAME", "Model", "Serial", "Firmware", "result:", "Reallocated", "Spin_Retry", "Temperature_Celsius", 
                 "Current_Pending_Sector", "Offline_Uncorrectable", "Extended offline", "Percentage Used", "Power On Hours", "Power_On_Hours", "Integrity Errors"]
 for disk in indep_disk_list:
     infomsg = os.popen("/usr/sbin/smartctl -a /dev/disk/by-id/"+disk).read()

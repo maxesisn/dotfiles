@@ -63,7 +63,6 @@ for bangumi in bangumi_in_rename_config_list:
     folder_name = bangumi["folder_name"]
     raw_name = bangumi["raw_name"]
     start_episode = int(sorted(bangumi_in_bgmi["episode_list"])[0])
-    logging.info("Processing "+folder_name)
     if folder_name not in os.listdir(BGMI_FOLDER_PATH):
         logging.info("Bangumi not exist, skipped")
         continue
@@ -90,7 +89,6 @@ for bangumi in bangumi_in_rename_config_list:
         bangumi_in_medialib_existed_episodes)
 
     if not new_episodes_in_bgmi_folder:
-        logging.info("No new episodes, skipped")
         continue
     new_episodes_in_bgmi_folder = sorted(list(new_episodes_in_bgmi_folder))
 
@@ -105,10 +103,9 @@ for bangumi in bangumi_in_rename_config_list:
 
     for ep in episodes_still_in_downloading_status:
         new_episodes_in_bgmi_folder.remove(ep)
-        logging.info("Episode "+str(ep)+" still in downloading status, skipped")
+        logging.info("Episode "+str(ep)+" of "+ folder_name + " still in downloading status, skipped")
 
     if not new_episodes_in_bgmi_folder:
-        logging.info("No new episodes, skipped")
         continue
 
 
@@ -119,7 +116,7 @@ for bangumi in bangumi_in_rename_config_list:
     episode_name_list = list()
     for episode in new_episodes_in_bgmi_folder:
         episode = str(episode)
-        logging.info("ℹ Processing episode "+episode)
+        logging.info("ℹ Processing episode "+episode + " of "+folder_name)
         episode_name_list.append(f"第{episode}集")
         episode_ready_for_copy_path: str = bangumi_in_bgmi["episode_list"][episode]["path"]
         episode_ready_for_copy_path = BGMI_FOLDER_PATH + episode_ready_for_copy_path
@@ -147,14 +144,11 @@ if email_content != "":
     send_mail(subject, email_content)
 
 
-
-logging.info("开始二次扫描")
 scan_rename_log = ""
 for bangumi_name in bangumi_in_rename_config_list:
     folder_name = bangumi_name["folder_name"]
     raw_name = bangumi_name["raw_name"]
     try:
-        logging.info(f"Processing {folder_name}")
         os.chdir(os.path.join(MEDIALIB_FOLDER_PATH, folder_name))
         rename_log = os.popen(f"/usr/local/bin/anirename '{raw_name}'").read()
         rename_log = rename_log.splitlines()
@@ -164,7 +158,6 @@ for bangumi_name in bangumi_in_rename_config_list:
                 if not log.startswith("Stripping invalid characters"):
                     new_rename_log.append(log)
         new_rename_log = "\n".join(new_rename_log)
-        print(new_rename_log)
         if not any(x in rename_log for x in ["Processed 0 files", "No media files"]):
             logging.info(f"《{folder_name}》补全了重命名")
             scan_rename_log += f"对《{folder_name}》扫描时补全了重命名工作：\n"
