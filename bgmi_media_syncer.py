@@ -3,12 +3,28 @@ import logging
 import re
 import requests
 from datetime import datetime
+from tomlkit import parse
 
 from global_config import MEDIALIB_FOLDER_PATH, BGMI_FOLDER_PATH, BGMI_API_URL
 from sendmail import send_mail
 
+
+def extract_seson_number(episode_name):
+    """Extract season number from episode name"""
+    season_number = re.search(r".*S(\d+)E\d+.*", episode_name)
+    if season_number:
+        return int(season_number.group(1))
+    else:
+        return 0
+
+
+def replace_season_number(episode_name, season_number):
+    """Replace season number in episode name"""
+    return re.sub(r"S\d+E", f"S{season_number:02d}E", episode_name)
+
+
 log_pattern = re.compile(r"(.*)Skipped(.*)already exists(.*)")
-NEED_RENAME_CONFIG = MEDIALIB_FOLDER_PATH+"NEED_RENAME.txt"
+NEED_RENAME_CONFIG = MEDIALIB_FOLDER_PATH+"RENAME_CONFIG.toml"
 
 bgmi_index_data = requests.get(BGMI_API_URL).json()
 bgmi_bangumi_list = list()
@@ -29,13 +45,17 @@ email_content = ""
 bangumi_in_rename_config_list = list()
 
 with open(NEED_RENAME_CONFIG) as f:
-    while True:
-        temp_dict = dict()
-        temp_dict["folder_name"] = f.readline().rstrip("\n")
-        temp_dict["raw_name"] = f.readline().rstrip("\n")
-        if not (temp_dict["folder_name"] or temp_dict["raw_name"]):
-            break
-        bangumi_in_rename_config_list.append(temp_dict)
+    config_str = f.read()
+    config = parse(config_str)
+    config_anime_list = config["Anime"]
+    for anime in config_anime_list:
+        bangumi_in_rename_config_list.append({
+            "folder_name": anime.get("folder_name"),
+            "raw_name": anime.get("raw_name") or anime.get("folder_name"),
+            "season": anime.get("season") or 1,
+            "first_episode_in_metadata_db": anime.get("first_episode_in_metadata_db") or 1,
+        })
+
 
 bangumi_missing_str = "警告：\n"
 
@@ -78,10 +98,13 @@ for bangumi in bangumi_in_rename_config_list:
         ep = ep_g.group(3)
         ses = ep_g.group(2)
         ep = int(ep)
-        bangumi_in_medialib_existed_episodes.append(ep+start_episode-1)
+        if bangumi["first_episode_in_metadata_db"] == 1:
+            ep = ep+start_episode-1
+        bangumi_in_medialib_existed_episodes.append(ep)
 
     bangumi_in_bgmi_folder_episodes = os.listdir(BGMI_FOLDER_PATH+folder_name)
-    bangumi_in_bgmi_folder_episodes = [int(ep) for ep in bangumi_in_bgmi_folder_episodes]
+    bangumi_in_bgmi_folder_episodes = [
+        int(ep) for ep in bangumi_in_bgmi_folder_episodes]
     bangumi_all_available_episodes = bangumi_in_medialib_existed_episodes + \
         bangumi_in_bgmi_folder_episodes
     bangumi_all_available_episodes = set(bangumi_all_available_episodes)
@@ -103,11 +126,11 @@ for bangumi in bangumi_in_rename_config_list:
 
     for ep in episodes_still_in_downloading_status:
         new_episodes_in_bgmi_folder.remove(ep)
-        logging.info("Episode "+str(ep)+" of "+ folder_name + " still in downloading status, skipped")
+        logging.info("Episode "+str(ep)+" of " + folder_name +
+                     " still in downloading status, skipped")
 
     if not new_episodes_in_bgmi_folder:
         continue
-
 
     if email_content == "":
         email_content += bangumi_missing_str
@@ -137,7 +160,17 @@ for bangumi in bangumi_in_rename_config_list:
     new_rename_log = "\n".join(new_rename_log)
     email_content += "\n重命名日志如下:\n"
     email_content += new_rename_log
-    email_content += "\n\n"
+
+    if bangumi["season"] != "1":
+        season_replace_flag = False
+        for file in os.listdir():
+            season_number = extract_seson_number(file)
+            if season_number != anime["season"]:
+                os.rename(file, replace_season_number(file, bangumi["season"]))
+                season_replace_flag = True
+        if season_replace_flag:
+            email_content += "\n检测到不正确的重命名结果，已将文件名中的季数替换为" + \
+                str(bangumi["season"])+"\n\n"
 
 if email_content != "":
     subject = f"新番复制重命名工作 {datetime.now().strftime('%m/%d/%Y, %H:%M')}"
