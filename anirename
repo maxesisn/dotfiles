@@ -1,3 +1,2 @@
 #! /usr/bin/bash
-# JAVA_OPTS="-Dhttp.proxyHost=192.168.2.3 -Dhttp.proxyPort=7890 -Dhttps.proxyHost=192.168.2.3 -Dhttps.proxyPort=7890"
-/usr/bin/filebot -rename -r "./" --format "{n} - {s00e00} - {t}" --db TheTVDB --lang "Japanese" --q "$@"
+JAVA_OPTS="-Dhttp.proxyHost=192.168.2.3 -Dhttp.proxyPort=7890 -Dhttps.proxyHost=192.168.2.3 -Dhttps.proxyPort=7890" /usr/bin/filebot -rename -r "./" --format "{n} - {s00e00} - {t}" --db AniDB --lang "Japanese" -non-strict --q "$@"
